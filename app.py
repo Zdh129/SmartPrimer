@@ -237,7 +237,7 @@ with st.sidebar:
 
 # --- 主屏幕 (Main Content)：序列输入与结果展示 ---
 
-st.title("🧬 智能核酸引物设计平台")
+st.title("🧬 引物设计平台")
 st.markdown(f"**当前执行模式:** `< {method_choice} >`")
 st.markdown("---")
 
