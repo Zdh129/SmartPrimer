@@ -1,4 +1,4 @@
-# 🧬 SmartPrimer | 智能核酸引物设计综合平台
+# 🧬 SmartPrimer | 引物设计平台
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.20+-FF4B4B.svg)
