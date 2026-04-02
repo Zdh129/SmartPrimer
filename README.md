@@ -7,7 +7,7 @@
 
 **SmartPrimer** 是一款专为现代分子生物学和合成生物学打造的高自动化引物设计 Web 工具。基于 Python 和业界公认的 `primer3` 核心算法，为生命科学研究者提供从常规克隆到复杂多片段无缝组装的“一站式”解决方案。
 
-🌐 **[在线体验 SmartPrimer]** (在这里填入你的 Streamlit Cloud 专属链接)
+🌐 **[在线体验 SmartPrimer]** (https://smartprimer-zdh.streamlit.app/)
 
 ---
 
