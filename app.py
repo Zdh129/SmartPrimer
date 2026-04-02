@@ -6,7 +6,7 @@ import pandas as pd
 # 0. 网页全局配置 (必须放在第一行)
 # ==========================================
 st.set_page_config(
-    page_title="智能引物设计平台 | SmartPrimer",
+    page_title="引物设计平台 | SmartPrimer",
     page_icon="🧬",
     layout="wide", # 开启宽屏模式
     initial_sidebar_state="expanded"
