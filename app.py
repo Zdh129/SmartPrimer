@@ -286,7 +286,7 @@ else:
 
 # --- 运行计算与结果展示 ---
 st.markdown("<br>", unsafe_allow_html=True)
-if st.button("🚀 启动 AI 引擎进行设计"):
+if st.button("🚀 启动"):
     st.markdown("### 📊 引擎设计结果")
     if is_qpcr:
         if not gene_seq.strip(): st.error("⚠️ 请输入靶基因序列！")
