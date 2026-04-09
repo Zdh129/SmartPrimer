@@ -6,7 +6,7 @@ import pandas as pd
 # 0. 网页全局配置 (必须放在第一行)
 # ==========================================
 st.set_page_config(
-    page_title="引物设计平台 | SmartPrimer",
+    page_title="智能引物设计平台 | SmartPrimer",
     page_icon="🧬",
     layout="wide", # 开启宽屏模式
     initial_sidebar_state="expanded"
@@ -194,7 +194,7 @@ def design_qpcr_primers(target_seq, target_tm, min_amp, max_amp, gene_name, max_
 # --- 侧边栏 (Sidebar)：所有设置与控制 ---
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/000000/dna-helix.png", width=60) # 添加一个小 Logo
-    st.markdown("## ⚙️控制面板")
+    st.markdown("## ⚙️ 核心控制面板")
     
     st.markdown("#### 1. 实验方案选择")
     method_choice = st.radio(
@@ -214,7 +214,7 @@ with st.sidebar:
     else: current_method = "qPCR"
 
     st.markdown("---")
-    st.markdown("#### 2. 参数配置")
+    st.markdown("#### 2. 热力学参数配置")
     
     if is_qpcr:
         target_tm = st.slider("🎯 目标 Tm (°C)", 55.0, 65.0, 60.0, 0.5)
@@ -237,7 +237,7 @@ with st.sidebar:
 
 # --- 主屏幕 (Main Content)：序列输入与结果展示 ---
 
-st.title("🧬 引物设计平台")
+st.title("🧬 智能核酸引物设计平台")
 st.markdown(f"**当前执行模式:** `< {method_choice} >`")
 st.markdown("---")
 
@@ -286,7 +286,7 @@ else:
 
 # --- 运行计算与结果展示 ---
 st.markdown("<br>", unsafe_allow_html=True)
-if st.button("🚀 启动"):
+if st.button("🚀 启动 AI 引擎进行设计"):
     st.markdown("### 📊 引擎设计结果")
     if is_qpcr:
         if not gene_seq.strip(): st.error("⚠️ 请输入靶基因序列！")
@@ -295,9 +295,28 @@ if st.button("🚀 启动"):
                 results = design_qpcr_primers(gene_seq.replace(" ", "").replace("\n", "").upper(), target_tm, amp_range[0], amp_range[1], gene_name, do_enz_scan=do_enz_scan)
                 if results:
                     st.success("🎉 设计完成！已为您筛选出表现最优的候选引物对。")
+                    
+                    # 1. 网页端展示完整数据表
                     df = pd.DataFrame(results)
                     st.dataframe(df, use_container_width=True, hide_index=True)
-                    st.download_button("📥 下载完整订购单 (CSV)", df.to_csv(index=False).encode('utf-8-sig'), f"{gene_name}_qPCR.csv", "text/csv")
+                    
+                    # 2. 构建极简的 TXT 导出内容 (展平 qPCR 的正反引物)
+                    txt_lines = ["序号\t引物名称\t引物序列(5'->3')"]
+                    idx = 1
+                    for r in results:
+                        txt_lines.append(f"{idx}\t{r['正向引物']}\t{r['Fwd (5\'->3\')']}")
+                        idx += 1
+                        txt_lines.append(f"{idx}\t{r['反向引物']}\t{r['Rev (5\'->3\')']}")
+                        idx += 1
+                    txt_content = "\n".join(txt_lines)
+                    
+                    # 3. 提供 TXT 下载
+                    st.download_button(
+                        label="📥 下载引物序列订购单 (.txt)", 
+                        data=txt_content.encode('utf-8'), 
+                        file_name=f"{gene_name}_qPCR_Primers.txt", 
+                        mime="text/plain"
+                    )
                 else: st.error("❌ 未找到合适的引物对，请尝试放宽参数限制。")
     else:
         if any(not f['seq'] for f in all_fragments): st.error("⚠️ 请确保所有片段的序列框已填满！")
@@ -307,10 +326,25 @@ if st.button("🚀 启动"):
                 df = pd.DataFrame(results)
                 
                 st.success("🎉 所有引物设计完成！请检查下方的酶切位点警告状态。")
-                def highlight(val): return 'color: #ff4b4b; font-weight: bold;' if isinstance(val, str) and '⚠️' in val else ''
                 
+                # 1. 网页端展示带高亮的完整数据表
+                def highlight(val): return 'color: #ff4b4b; font-weight: bold;' if isinstance(val, str) and '⚠️' in val else ''
                 display_df = df.style.map(highlight, subset=['酶切警告']) if do_enz_scan else df
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
-                fname = f"{plasmid_name}_{current_method.replace(' ', '')}.csv" if needs_vector else f"Overlap_{fragment_count}Frags.csv"
-                st.download_button("📥 下载完整订购单 (CSV)", df.to_csv(index=False).encode('utf-8-sig'), fname, "text/csv")
+                # 2. 构建极简的 TXT 导出内容
+                txt_lines = ["序号\t引物名称\t引物序列(5'->3')"]
+                idx = 1
+                for r in results:
+                    txt_lines.append(f"{idx}\t{r['引物名称']}\t{r['序列 (5\'->3\')']}")
+                    idx += 1
+                txt_content = "\n".join(txt_lines)
+                
+                # 3. 提供 TXT 下载
+                fname = f"{plasmid_name}_{current_method.replace(' ', '')}.txt" if needs_vector else f"Overlap_{fragment_count}Frags.txt"
+                st.download_button(
+                    label="📥 下载引物序列订购单 (.txt)", 
+                    data=txt_content.encode('utf-8'), 
+                    file_name=fname, 
+                    mime="text/plain"
+                )
