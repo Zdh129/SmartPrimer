@@ -1,0 +1,11 @@
+[theme]
+# 严谨的学术字体
+font = "sans serif"
+# 科技感主色调 (对应 UI 里的荧光青)
+primaryColor = "#06B6D4"
+# 纯净白背景
+backgroundColor = "#FFFFFF"
+# 侧边栏/小卡片的浅灰色
+secondaryBackgroundColor = "#F8FAFC"
+# 深灰蓝字体，比纯黑更现代、不刺眼
+textColor = "#334155"
