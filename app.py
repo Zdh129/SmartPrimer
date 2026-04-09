@@ -16,28 +16,18 @@ st.set_page_config(
 # --- 全新暗黑科技风 (Cyber-Genetics) CSS 注入 ---
 st.markdown("""
 <style>
-    /* 1. 全局背景优化 (深邃黑) */
-    .stApp {
-        background-color: #0E1117;
-    }
+    .stApp { background-color: #0E1117; }
     
-    /* 2. 侧边栏美化: 极简深灰黑，增强层级感 */
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #161B22 0%, #0D1117 100%);
         border-right: 1px solid #30363D;
     }
 
-    /* 3. 主运行按钮：赛博朋克流动渐变 (深紫 -> 霓虹青) */
     .stButton>button {
-        width: 100%;
-        border-radius: 8px;
-        height: 50px;
-        font-size: 18px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
+        width: 100%; border-radius: 8px; height: 50px;
+        font-size: 18px; font-weight: 600; letter-spacing: 0.5px;
         background: linear-gradient(135deg, #6B21A8 0%, #00E5FF 100%);
-        color: #FFFFFF;
-        border: none;
+        color: #FFFFFF; border: none;
         box-shadow: 0 4px 15px 0 rgba(0, 229, 255, 0.2);
         transition: all 0.3s ease 0s;
     }
@@ -47,33 +37,24 @@ st.markdown("""
         background: linear-gradient(135deg, #581C87 0%, #00B8D4 100%);
     }
 
-    /* 4. 输入框/文本域/下拉菜单的暗黑交互优化 (霓虹呼吸灯) */
     .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {
-        border-radius: 6px;
-        border: 1px solid #30363D;
-        background-color: #0D1117;
-        color: #E2E8F0;
+        border-radius: 6px; border: 1px solid #30363D;
+        background-color: #0D1117; color: #E2E8F0;
         transition: all 0.2s ease-in-out;
     }
     .stTextInput>div>div>input:focus, .stSelectbox>div>div>div:focus, .stTextArea>div>div>textarea:focus {
-        border-color: #00E5FF;
-        background-color: #161B22;
+        border-color: #00E5FF; background-color: #161B22;
         box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.25);
     }
 
-    /* 5. 提示框扁平化暗黑处理 */
     .stAlert {
-        border-radius: 6px;
-        border: none;
-        border-left: 4px solid;
-        background-color: #161B22;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        border-radius: 6px; border: none; border-left: 4px solid;
+        background-color: #161B22; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
     }
 
-    /* 6. 隐藏 Streamlit 默认菜单，打造独立沉浸感 */
+    /* 隐藏 Streamlit 默认菜单和底部水印 (保留 header 保证侧边栏按钮可用) */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -183,7 +164,7 @@ def design_assembly_primers(method, all_fragments, target_tm, homology_len, plas
                 note_fwd = f"连 [{all_fragments[i-1]['name']}] 3'端"
             
         fwd_data = {
-            "引物名称": fwd_primer_name, "序列 (5'->3')": primer_fwd, 
+            "序号": len(primers_list) + 1, "引物名称": fwd_primer_name, "序列 (5'->3')": primer_fwd, 
             "长度": len(primer_fwd), "Tm": round(tm_fwd, 2), "备注": note_fwd
         }
         if do_enz_scan: fwd_data["酶切警告"] = check_restriction_sites(primer_fwd)
@@ -205,7 +186,7 @@ def design_assembly_primers(method, all_fragments, target_tm, homology_len, plas
                 note_rev = f"连 [{all_fragments[i+1]['name']}] 5'端"
             
         rev_data = {
-            "引物名称": rev_primer_name, "序列 (5'->3')": primer_rev, 
+            "序号": len(primers_list) + 1, "引物名称": rev_primer_name, "序列 (5'->3')": primer_rev, 
             "长度": len(primer_rev), "Tm": round(tm_rev, 2), "备注": note_rev
         }
         if do_enz_scan: rev_data["酶切警告"] = check_restriction_sites(primer_rev)
@@ -233,7 +214,7 @@ def design_qpcr_primers(target_seq, target_tm, min_amp, max_amp, gene_name, max_
                     
                     pair_idx = len(results) + 1
                     pair_data = {
-                        "方案": f"Pair {pair_idx}", 
+                        "序号": pair_idx, "方案": f"Pair {pair_idx}", 
                         "正向引物": f"{gene_name}-{pair_idx}-F", "Fwd (5'->3')": f_seq, "Fwd Tm": round(f_tm, 2),
                         "反向引物": f"{gene_name}-{pair_idx}-R", "Rev (5'->3')": r_seq, "Rev Tm": round(r_tm, 2), 
                         "产物长": amp_len, "Tm 差": round(abs(f_tm - r_tm), 2)
@@ -367,10 +348,9 @@ if st.button("🚀 启动 AI 引擎进行设计"):
                     st.success("🎉 设计完成！已为您筛选出表现最优的候选引物对。")
                     
                     df = pd.DataFrame(results)
-                    df.index = range(1, len(df) + 1)
+                    # ✅ 这里加上 hide_index=True 隐藏 Pandas 自带序号
                     st.dataframe(df, use_container_width=True, hide_index=True)
                     
-                    # 导出为 SnapGene 格式 (名称 \t 序列 \t 备注)
                     txt_lines = []
                     for r in results:
                         txt_lines.append(f"{r['正向引物']}\t{r['Fwd (5\'->3\')']}\tqPCR产物:{r['产物长']}bp")
@@ -390,15 +370,14 @@ if st.button("🚀 启动 AI 引擎进行设计"):
             with st.spinner(f'🔧 正在根据热力学规则规划 {current_method} 引物...'):
                 results = design_assembly_primers(current_method, all_fragments, target_tm, homology_len, plasmid_name, do_enz_scan)
                 df = pd.DataFrame(results)
-                df.index = range(1, len(df) + 1)
                 
                 st.success("🎉 所有引物设计完成！请检查下方的酶切位点警告状态。")
                 def highlight(val): return 'color: #00E5FF; font-weight: bold;' if isinstance(val, str) and '⚠️' in val else ''
                 
                 display_df = df.style.map(highlight, subset=['酶切警告']) if do_enz_scan else df
+                # ✅ 这里加上 hide_index=True 隐藏 Pandas 自带序号
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
-                # 导出为 SnapGene 格式 (名称 \t 序列 \t 备注)
                 txt_lines = []
                 for r in results:
                     txt_lines.append(f"{r['引物名称']}\t{r['序列 (5\'->3\')']}\t{r['备注']}")
