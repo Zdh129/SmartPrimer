@@ -1,7 +1,7 @@
 import streamlit as st
 import primer3
 import pandas as pd
-from Bio import SeqIO  # 用于解析 SnapGene 的 .dna 格式
+from Bio import SeqIO  
 
 # ==========================================
 # 0. 网页全局配置 (必须放在第一行)
@@ -50,7 +50,6 @@ def parse_sequence_file(uploaded_file):
     sequences = []
     filename = uploaded_file.name.lower()
     
-    # 1. SnapGene 格式 (.dna) 处理
     if filename.endswith(".dna"):
         try:
             uploaded_file.seek(0)
@@ -65,8 +64,6 @@ def parse_sequence_file(uploaded_file):
                     sequences.append({"name": f"[元件] {feature_name}", "seq": feature_seq})
         except Exception:
             pass 
-            
-    # 2. 传统文本格式 (FASTA/TXT) 处理
     else:
         uploaded_file.seek(0)
         file_content = uploaded_file.getvalue().decode("utf-8")
@@ -116,11 +113,14 @@ def design_assembly_primers(method, all_fragments, target_tm, homology_len, plas
     for i in range(N):
         curr_name = all_fragments[i]['name']
         curr_seq = all_fragments[i]['seq']
+        # 提取 PCR 模板名称
+        curr_template = all_fragments[i].get('template', curr_name)
         kb_len = f"{len(curr_seq)/1000:.1f}k"
         
+        # ✅ 新的标准化命名规则：质粒名-片段总数-序号-长度k-模板名-方向
         if is_circular:
-            fwd_primer_name = f"{plasmid_name}-{N}-{i+1}-{kb_len}-F"
-            rev_primer_name = f"{plasmid_name}-{N}-{i+1}-{kb_len}-R"
+            fwd_primer_name = f"{plasmid_name}-{N}-{i+1}-{kb_len}-{curr_template}-F"
+            rev_primer_name = f"{plasmid_name}-{N}-{i+1}-{kb_len}-{curr_template}-R"
         else:
             fwd_primer_name = f"{curr_name}-F"
             rev_primer_name = f"{curr_name}-R"
@@ -277,27 +277,43 @@ else:
         
         st.info("💡 **片段 1 (载体骨架)** 将被视为组装的基石，平台会自动为其设计线性化扩增引物。")
         v_col1, v_col2 = st.columns([1, 3])
-        with v_col1: v_name = st.text_input("载体命名", value=imported_seqs[0]["name"].replace("[完整] ", "").replace("[元件] ", "") if imported_seqs else "Vector")
-        with v_col2: v_seq = st.text_area("载体序列 (5' -> 3')", value=imported_seqs[0]["seq"] if imported_seqs else "", height=80)
-        all_fragments.append({"name": v_name.strip(), "seq": v_seq.replace(" ", "").replace("\n", "").upper()})
+        with v_col1: 
+            v_name = st.text_input("载体命名", value=imported_seqs[0]["name"].replace("[完整] ", "").replace("[元件] ", "") if imported_seqs else "Vector")
+            # ✅ 新增：PCR 模板框，默认值为填入的名字，方便不修改直接用
+            v_temp = st.text_input("🧪 扩增用 PCR 模板", value=v_name, key="v_temp")
+        with v_col2: 
+            # 将高度调整到 130，完美匹配左侧两个输入框的总高度
+            v_seq = st.text_area("载体序列 (5' -> 3')", value=imported_seqs[0]["seq"] if imported_seqs else "", height=130)
+        
+        all_fragments.append({"name": v_name.strip(), "seq": v_seq.replace(" ", "").replace("\n", "").upper(), "template": v_temp.strip()})
 
         st.markdown("#### 🧩 插入片段序列")
         for i in range(1, fragment_count):
             d_name = imported_seqs[i]["name"].replace("[完整] ", "").replace("[元件] ", "") if i < len(imported_seqs) else f"Insert_{i}"
             d_seq = imported_seqs[i]["seq"] if i < len(imported_seqs) else ""
             f_col1, f_col2 = st.columns([1, 3])
-            with f_col1: f_name = st.text_input(f"片段 {i+1} 命名", value=d_name, key=f"fn_{i}")
-            with f_col2: f_seq = st.text_area(f"片段 {i+1} 序列 (5' -> 3')", value=d_seq, height=80, key=f"fs_{i}")
-            all_fragments.append({"name": f_name.strip(), "seq": f_seq.replace(" ", "").replace("\n", "").upper()})
+            with f_col1: 
+                f_name = st.text_input(f"片段 {i+1} 命名", value=d_name, key=f"fn_{i}")
+                # ✅ 新增：片段的 PCR 模板框
+                f_temp = st.text_input("🧪 扩增用 PCR 模板", value=d_name, key=f"ft_{i}")
+            with f_col2: 
+                f_seq = st.text_area(f"片段 {i+1} 序列 (5' -> 3')", value=d_seq, height=130, key=f"fs_{i}")
+            
+            all_fragments.append({"name": f_name.strip(), "seq": f_seq.replace(" ", "").replace("\n", "").upper(), "template": f_temp.strip()})
     else:
         st.markdown("#### 🧩 线性拼接片段序列")
         for i in range(fragment_count):
             d_name = imported_seqs[i]["name"].replace("[完整] ", "").replace("[元件] ", "") if i < len(imported_seqs) else f"Fragment_{i+1}"
             d_seq = imported_seqs[i]["seq"] if i < len(imported_seqs) else ""
             f_col1, f_col2 = st.columns([1, 3])
-            with f_col1: f_name = st.text_input(f"片段 {i+1} 命名", value=d_name, key=f"fn_{i}")
-            with f_col2: f_seq = st.text_area(f"片段 {i+1} 序列 (5' -> 3')", value=d_seq, height=80, key=f"fs_{i}")
-            all_fragments.append({"name": f_name.strip(), "seq": f_seq.replace(" ", "").replace("\n", "").upper()})
+            with f_col1: 
+                f_name = st.text_input(f"片段 {i+1} 命名", value=d_name, key=f"fn_{i}")
+                # ✅ 新增：线性拼接的模板框
+                f_temp = st.text_input("🧪 扩增用 PCR 模板", value=d_name, key=f"ft_{i}")
+            with f_col2: 
+                f_seq = st.text_area(f"片段 {i+1} 序列 (5' -> 3')", value=d_seq, height=130, key=f"fs_{i}")
+                
+            all_fragments.append({"name": f_name.strip(), "seq": f_seq.replace(" ", "").replace("\n", "").upper(), "template": f_temp.strip()})
 
 
 # --- 4. 执行计算 ---
@@ -313,7 +329,6 @@ if st.button("🚀 启动 AI 引擎进行设计"):
                     st.success("🎉 设计完成！已为您筛选出表现最优的候选引物对。")
                     
                     df = pd.DataFrame(results)
-                    # 设定行索引从 1 开始，方便在网页端查看
                     df.index = range(1, len(df) + 1)
                     st.dataframe(df, use_container_width=True)
                     
@@ -337,7 +352,6 @@ if st.button("🚀 启动 AI 引擎进行设计"):
             with st.spinner(f'🔧 正在根据热力学规则规划 {current_method} 引物...'):
                 results = design_assembly_primers(current_method, all_fragments, target_tm, homology_len, plasmid_name, do_enz_scan)
                 df = pd.DataFrame(results)
-                # 设定行索引从 1 开始，方便在网页端查看
                 df.index = range(1, len(df) + 1)
                 
                 st.success("🎉 所有引物设计完成！请检查下方的酶切位点警告状态。")
