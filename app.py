@@ -7,7 +7,7 @@ from Bio import SeqIO
 # 0. 网页全局配置 & 会话状态初始化
 # ==========================================
 st.set_page_config(
-    page_title="引物设计平台 | SmartPrimer",
+    page_title="智能引物设计平台 | SmartPrimer",
     page_icon="🧬",
     layout="wide", 
     initial_sidebar_state="expanded"
@@ -237,7 +237,7 @@ def design_qpcr_primers(target_seq, target_tm, min_amp, max_amp, gene_name, max_
 # --- 侧边栏 (Sidebar)：所有设置与控制 ---
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/000000/dna-helix.png", width=60)
-    st.markdown("## ⚙️ 控制面板")
+    st.markdown("## ⚙️ 核心控制面板")
     
     st.markdown("#### 1. 实验方案选择")
     method_choice = st.radio(
@@ -257,7 +257,7 @@ with st.sidebar:
     else: current_method = "qPCR"
 
     st.markdown("---")
-    st.markdown("#### 2. 参数配置")
+    st.markdown("#### 2. 热力学参数配置")
     
     if is_qpcr:
         target_tm = st.slider("🎯 目标 Tm (°C)", 55.0, 65.0, 60.0, 0.5)
@@ -267,7 +267,7 @@ with st.sidebar:
         elif is_gibson: fragment_count = st.selectbox("🧩 总组装片段数 (含载体):", list(range(2, 7)), index=1)
         else: fragment_count = st.selectbox("🧩 总拼接片段数:", list(range(2, 7)), index=0)
         
-        target_tm = st.slider("🎯 结合区目标 Tm (°C)", 50.0, 70.0, 65.0, 0.5)
+        target_tm = st.slider("🎯 结合区目标 Tm (°C)", 50.0, 70.0, 60.0, 0.5)
         homology_len = st.number_input("🔗 同源臂长度 (bp)", 15, 60, 25)
             
     st.markdown("---")
@@ -279,11 +279,11 @@ with st.sidebar:
 
 
 # --- 主屏幕 (Main Content)：序列输入与结果展示 ---
-st.title("🧬 智能引物设计平台")
+st.title("🧬 智能核酸引物设计平台")
 st.markdown(f"**当前执行模式:** `< {method_choice} >`")
 st.markdown("---")
 
-st.markdown("### 📥 序列输入")
+st.markdown("### 📥 序列输入舱")
 uploaded_file = st.file_uploader("📂 支持拖拽 SnapGene .dna, .fasta 或 .txt，实现自动填表与元件提取", type=["fasta", "fas", "txt", "seq", "dna"])
 
 imported_seqs = []
@@ -296,19 +296,25 @@ plasmid_name, gene_name, all_fragments = "", "", []
 if is_qpcr:
     gene_name = st.text_input("🏷️ 靶基因名称", value=imported_seqs[0]["name"].replace("[完整] ", "").replace("[元件] ", "") if imported_seqs else "Target_Gene")
     gene_seq = st.text_area("🧬 靶基因完整序列 (5' -> 3')", value=imported_seqs[0]["seq"] if imported_seqs else "", height=200)
+    # ✅ 新增：实时显示序列长度，自动剔除空格和换行
+    clean_gene_len = len(gene_seq.replace(" ", "").replace("\n", ""))
+    st.markdown(f"<div style='text-align: right; color: #00E5FF; font-size: 13px; font-weight: bold; margin-top: -15px; margin-bottom: 10px;'>实时长度: {clean_gene_len} bp</div>", unsafe_allow_html=True)
 
 else:
     if needs_vector:
         plasmid_name = st.text_input(f"🏆 最终构建的质粒名称 (用于订单命名):", value="pNew_Plasmid")
         
-        st.info("💡 **片段 1 (载体骨架)** ")
+        st.info("💡 **片段 1 (载体骨架)** 将被视为组装的基石，平台会自动为其设计线性化扩增引物。")
         v_col1, v_col2 = st.columns([1, 3])
         with v_col1: 
             v_name = st.text_input("载体命名", value=imported_seqs[0]["name"].replace("[完整] ", "").replace("[元件] ", "") if imported_seqs else "Vector")
             v_temp = st.text_input("🧪 扩增用 PCR 模板", value=v_name, key="v_temp")
         with v_col2: 
             v_seq = st.text_area("载体序列 (5' -> 3')", value=imported_seqs[0]["seq"] if imported_seqs else "", height=130)
-        
+            # ✅ 新增：载体序列实时长度
+            clean_v_len = len(v_seq.replace(" ", "").replace("\n", ""))
+            st.markdown(f"<div style='text-align: right; color: #00E5FF; font-size: 13px; font-weight: bold; margin-top: -15px; margin-bottom: 10px;'>实时长度: {clean_v_len} bp</div>", unsafe_allow_html=True)
+
         all_fragments.append({"name": v_name.strip(), "seq": v_seq.replace(" ", "").replace("\n", "").upper(), "template": v_temp.strip()})
 
         st.markdown("#### 🧩 插入片段序列")
@@ -321,6 +327,9 @@ else:
                 f_temp = st.text_input("🧪 扩增用 PCR 模板", value=d_name, key=f"ft_{i}")
             with f_col2: 
                 f_seq = st.text_area(f"片段 {i+1} 序列 (5' -> 3')", value=d_seq, height=130, key=f"fs_{i}")
+                # ✅ 新增：片段序列实时长度
+                clean_f_len = len(f_seq.replace(" ", "").replace("\n", ""))
+                st.markdown(f"<div style='text-align: right; color: #00E5FF; font-size: 13px; font-weight: bold; margin-top: -15px; margin-bottom: 10px;'>实时长度: {clean_f_len} bp</div>", unsafe_allow_html=True)
             
             all_fragments.append({"name": f_name.strip(), "seq": f_seq.replace(" ", "").replace("\n", "").upper(), "template": f_temp.strip()})
     else:
@@ -334,13 +343,16 @@ else:
                 f_temp = st.text_input("🧪 扩增用 PCR 模板", value=d_name, key=f"ft_{i}")
             with f_col2: 
                 f_seq = st.text_area(f"片段 {i+1} 序列 (5' -> 3')", value=d_seq, height=130, key=f"fs_{i}")
+                # ✅ 新增：线性片段序列实时长度
+                clean_f_len = len(f_seq.replace(" ", "").replace("\n", ""))
+                st.markdown(f"<div style='text-align: right; color: #00E5FF; font-size: 13px; font-weight: bold; margin-top: -15px; margin-bottom: 10px;'>实时长度: {clean_f_len} bp</div>", unsafe_allow_html=True)
                 
             all_fragments.append({"name": f_name.strip(), "seq": f_seq.replace(" ", "").replace("\n", "").upper(), "template": f_temp.strip()})
 
 
 # --- 4. 执行计算与加入购物车 ---
 st.markdown("<br>", unsafe_allow_html=True)
-if st.button("🚀 开始设计 (并加入购物车)"):
+if st.button("🚀 启动 AI 引擎进行设计 (并加入购物车)"):
     st.markdown("### 📊 本次引擎设计结果")
     if is_qpcr:
         if not gene_seq.strip(): st.error("⚠️ 请输入靶基因序列！")
@@ -353,7 +365,6 @@ if st.button("🚀 开始设计 (并加入购物车)"):
                     df = pd.DataFrame(results)
                     st.dataframe(df, use_container_width=True, hide_index=True)
                     
-                    # ✅ 格式化并追加到全局购物车
                     for r in results:
                         st.session_state.primer_cart.append({"引物名称": r['正向引物'], "序列 (5'->3')": r["Fwd (5'->3')"], "备注": f"qPCR产物:{r['产物长']}bp"})
                         st.session_state.primer_cart.append({"引物名称": r['反向引物'], "序列 (5'->3')": r["Rev (5'->3')"], "备注": f"qPCR产物:{r['产物长']}bp"})
@@ -370,7 +381,6 @@ if st.button("🚀 开始设计 (并加入购物车)"):
                 display_df = df.style.map(highlight, subset=['酶切警告']) if do_enz_scan else df
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
-                # ✅ 格式化并追加到全局购物车
                 for r in results:
                     st.session_state.primer_cart.append({"引物名称": r['引物名称'], "序列 (5'->3')": r["序列 (5'->3')"], "备注": r['备注']})
 
@@ -382,25 +392,21 @@ st.markdown("<br><hr><br>", unsafe_allow_html=True)
 st.markdown(f"### 🛒 引物批量暂存车 (当前共有 {len(st.session_state.primer_cart)} 条引物)")
 
 if st.session_state.primer_cart:
-    # 💡 新增：操作指南提示
-    st.info("💡 **操作指南**：\n"
+    st.info("💡 **高阶操作指南**：\n"
             "1. **精准删除**：把鼠标移到表格最左侧的序号上，勾选对应行，点击右上角出现的『🗑️ 垃圾桶』即可删除个别引物。\n"
             "2. **直接修改**：双击任意单元格，可以像在 Excel 里一样，直接修改引物名称或备注信息！")
     
     cart_df = pd.DataFrame(st.session_state.primer_cart)
     
-    # ✅ 核心升级：将不可交互的 dataframe 替换为强大的 data_editor
     edited_df = st.data_editor(
         cart_df,
         use_container_width=True,
-        num_rows="dynamic", # 开启魔法参数：允许动态增加和删除行
+        num_rows="dynamic",
         key="primer_editor"
     )
     
-    # 实时将表格里的删除和修改动作，同步覆盖回全局购物车
     st.session_state.primer_cart = edited_df.to_dict('records')
     
-    # 构建兼容 SnapGene 的批量 txt 格式 (使用编辑后的最新数据)
     txt_lines = [f"{row['引物名称']}\t{row['序列 (5\'->3\')']}\t{row['备注']}" for _, row in edited_df.iterrows()]
     txt_content = "\n".join(txt_lines)
     
