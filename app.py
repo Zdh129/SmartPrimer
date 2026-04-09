@@ -241,7 +241,7 @@ with st.sidebar:
         elif is_gibson: fragment_count = st.selectbox("🧩 总组装片段数 (含载体):", list(range(2, 7)), index=1)
         else: fragment_count = st.selectbox("🧩 总拼接片段数:", list(range(2, 7)), index=0)
         
-        target_tm = st.slider("🎯 结合区目标 Tm (°C)", 50.0, 70.0, 60.0, 0.5)
+        target_tm = st.slider("🎯 结合区目标 Tm (°C)", 50.0, 70.0, 65.0, 0.5)
         homology_len = st.number_input("🔗 同源臂长度 (bp)", 15, 60, 25)
             
     st.markdown("---")
