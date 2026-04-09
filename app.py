@@ -4,14 +4,18 @@ import pandas as pd
 from Bio import SeqIO  
 
 # ==========================================
-# 0. 网页全局配置 (必须放在第一行)
+# 0. 网页全局配置 & 会话状态初始化
 # ==========================================
 st.set_page_config(
-    page_title="引物设计平台 | SmartPrimer",
+    page_title="智能引物设计平台 | SmartPrimer",
     page_icon="🧬",
     layout="wide", 
     initial_sidebar_state="expanded"
 )
+
+# 初始化引物购物车 (用于跨页面保存引物)
+if 'primer_cart' not in st.session_state:
+    st.session_state.primer_cart = []
 
 # --- 全新暗黑科技风 (Cyber-Genetics) CSS 注入 ---
 st.markdown("""
@@ -52,7 +56,6 @@ st.markdown("""
         background-color: #161B22; box-shadow: 0 1px 3px rgba(0,0,0,0.5);
     }
 
-    /* 隐藏 Streamlit 默认菜单和底部水印 (保留 header 保证侧边栏按钮可用) */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -234,7 +237,7 @@ def design_qpcr_primers(target_seq, target_tm, min_amp, max_amp, gene_name, max_
 # --- 侧边栏 (Sidebar)：所有设置与控制 ---
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/000000/dna-helix.png", width=60)
-    st.markdown("## ⚙️ 控制面板")
+    st.markdown("## ⚙️ 核心控制面板")
     
     st.markdown("#### 1. 实验方案选择")
     method_choice = st.radio(
@@ -254,7 +257,7 @@ with st.sidebar:
     else: current_method = "qPCR"
 
     st.markdown("---")
-    st.markdown("#### 2. 参数配置")
+    st.markdown("#### 2. 热力学参数配置")
     
     if is_qpcr:
         target_tm = st.slider("🎯 目标 Tm (°C)", 55.0, 65.0, 60.0, 0.5)
@@ -264,7 +267,7 @@ with st.sidebar:
         elif is_gibson: fragment_count = st.selectbox("🧩 总组装片段数 (含载体):", list(range(2, 7)), index=1)
         else: fragment_count = st.selectbox("🧩 总拼接片段数:", list(range(2, 7)), index=0)
         
-        target_tm = st.slider("🎯 结合区目标 Tm (°C)", 50.0, 70.0, 65.0, 0.5)
+        target_tm = st.slider("🎯 结合区目标 Tm (°C)", 50.0, 70.0, 60.0, 0.5)
         homology_len = st.number_input("🔗 同源臂长度 (bp)", 15, 60, 25)
             
     st.markdown("---")
@@ -276,11 +279,11 @@ with st.sidebar:
 
 
 # --- 主屏幕 (Main Content)：序列输入与结果展示 ---
-st.title("🧬 引物设计平台")
+st.title("🧬 智能核酸引物设计平台")
 st.markdown(f"**当前执行模式:** `< {method_choice} >`")
 st.markdown("---")
 
-st.markdown("### 📥 序列输入")
+st.markdown("### 📥 序列输入舱")
 uploaded_file = st.file_uploader("📂 支持拖拽 SnapGene .dna, .fasta 或 .txt，实现自动填表与元件提取", type=["fasta", "fas", "txt", "seq", "dna"])
 
 imported_seqs = []
@@ -298,7 +301,7 @@ else:
     if needs_vector:
         plasmid_name = st.text_input(f"🏆 最终构建的质粒名称 (用于订单命名):", value="pNew_Plasmid")
         
-        st.info("💡 **片段 1 (载体骨架)**")
+        st.info("💡 **片段 1 (载体骨架)** 将被视为组装的基石，平台会自动为其设计线性化扩增引物。")
         v_col1, v_col2 = st.columns([1, 3])
         with v_col1: 
             v_name = st.text_input("载体命名", value=imported_seqs[0]["name"].replace("[完整] ", "").replace("[元件] ", "") if imported_seqs else "Vector")
@@ -335,34 +338,25 @@ else:
             all_fragments.append({"name": f_name.strip(), "seq": f_seq.replace(" ", "").replace("\n", "").upper(), "template": f_temp.strip()})
 
 
-# --- 4. 执行计算 ---
+# --- 4. 执行计算与加入购物车 ---
 st.markdown("<br>", unsafe_allow_html=True)
-if st.button("🚀 开始设计"):
-    st.markdown("### 📊 引擎设计结果")
+if st.button("🚀 启动 AI 引擎进行设计 (并加入购物车)"):
+    st.markdown("### 📊 本次引擎设计结果")
     if is_qpcr:
         if not gene_seq.strip(): st.error("⚠️ 请输入靶基因序列！")
         else:
             with st.spinner('🧬 正在扫描庞大的序列空间结构...'):
                 results = design_qpcr_primers(gene_seq.replace(" ", "").replace("\n", "").upper(), target_tm, amp_range[0], amp_range[1], gene_name, do_enz_scan=do_enz_scan)
                 if results:
-                    st.success("🎉 设计完成！已为您筛选出表现最优的候选引物对。")
+                    st.success("🎉 设计完成！已为您筛选出表现最优的候选引物对，并加入购物车。")
                     
                     df = pd.DataFrame(results)
-                    # ✅ 这里加上 hide_index=True 隐藏 Pandas 自带序号
                     st.dataframe(df, use_container_width=True, hide_index=True)
                     
-                    txt_lines = []
+                    # ✅ 格式化并追加到全局购物车
                     for r in results:
-                        txt_lines.append(f"{r['正向引物']}\t{r['Fwd (5\'->3\')']}\tqPCR产物:{r['产物长']}bp")
-                        txt_lines.append(f"{r['反向引物']}\t{r['Rev (5\'->3\')']}\tqPCR产物:{r['产物长']}bp")
-                    txt_content = "\n".join(txt_lines)
-                    
-                    st.download_button(
-                        label="📥 下载 SnapGene 引物导入文件 (.txt)", 
-                        data=txt_content.encode('utf-8'), 
-                        file_name=f"{gene_name}_qPCR_Primers.txt", 
-                        mime="text/plain"
-                    )
+                        st.session_state.primer_cart.append({"引物名称": r['正向引物'], "序列 (5'->3')": r["Fwd (5'->3')"], "备注": f"qPCR产物:{r['产物长']}bp"})
+                        st.session_state.primer_cart.append({"引物名称": r['反向引物'], "序列 (5'->3')": r["Rev (5'->3')"], "备注": f"qPCR产物:{r['产物长']}bp"})
                 else: st.error("❌ 未找到合适的引物对，请尝试放宽参数限制。")
     else:
         if any(not f['seq'] for f in all_fragments): st.error("⚠️ 请确保所有片段的序列框已填满！")
@@ -371,22 +365,44 @@ if st.button("🚀 开始设计"):
                 results = design_assembly_primers(current_method, all_fragments, target_tm, homology_len, plasmid_name, do_enz_scan)
                 df = pd.DataFrame(results)
                 
-                st.success("🎉 所有引物设计完成！请检查下方的酶切位点警告状态。")
+                st.success("🎉 引物设计完成！已自动追加至下方购物车。")
                 def highlight(val): return 'color: #00E5FF; font-weight: bold;' if isinstance(val, str) and '⚠️' in val else ''
-                
                 display_df = df.style.map(highlight, subset=['酶切警告']) if do_enz_scan else df
-                # ✅ 这里加上 hide_index=True 隐藏 Pandas 自带序号
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
-                txt_lines = []
+                # ✅ 格式化并追加到全局购物车
                 for r in results:
-                    txt_lines.append(f"{r['引物名称']}\t{r['序列 (5\'->3\')']}\t{r['备注']}")
-                txt_content = "\n".join(txt_lines)
-                
-                fname = f"{plasmid_name}_{current_method.replace(' ', '')}.txt" if needs_vector else f"Overlap_{fragment_count}Frags.txt"
-                st.download_button(
-                    label="📥 下载 SnapGene 引物导入文件 (.txt)", 
-                    data=txt_content.encode('utf-8'), 
-                    file_name=fname, 
-                    mime="text/plain"
-                )
+                    st.session_state.primer_cart.append({"引物名称": r['引物名称'], "序列 (5'->3')": r["序列 (5'->3')"], "备注": r['备注']})
+
+
+# ==========================================
+# 5. 🛒 终极批量购物车面板
+# ==========================================
+st.markdown("<br><hr><br>", unsafe_allow_html=True)
+st.markdown(f"### 🛒 引物批量暂存车 (当前共有 {len(st.session_state.primer_cart)} 条引物)")
+
+if st.session_state.primer_cart:
+    # 渲染纯净的购物车表格
+    cart_df = pd.DataFrame(st.session_state.primer_cart)
+    cart_df.index = range(1, len(cart_df) + 1)
+    st.dataframe(cart_df, use_container_width=True)
+    
+    # 构建兼容 SnapGene 的批量 txt 格式
+    txt_lines = [f"{row['引物名称']}\t{row['序列 (5\'->3\')']}\t{row['备注']}" for _, row in cart_df.iterrows()]
+    txt_content = "\n".join(txt_lines)
+    
+    col_dl, col_clear, _ = st.columns([2, 1, 3])
+    with col_dl:
+        st.download_button(
+            label="📥 批量导出全部引物 (SnapGene 格式)", 
+            data=txt_content.encode('utf-8'), 
+            file_name="Batch_Primers_Order.txt", 
+            mime="text/plain"
+        )
+    with col_clear:
+        # 清空购物车并刷新网页的按钮
+        if st.button("🗑️ 清空购物车"):
+            st.session_state.primer_cart = []
+            st.rerun()
+else:
+    st.info("💡 您的购物车空空如也，赶快去上面设计一些引物吧！不论切换什么质粒或模式，每次计算的结果都会在此自动累加。")
