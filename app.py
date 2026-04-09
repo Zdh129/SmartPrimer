@@ -298,7 +298,7 @@ else:
     if needs_vector:
         plasmid_name = st.text_input(f"🏆 最终构建的质粒名称 (用于订单命名):", value="pNew_Plasmid")
         
-        st.info("💡 **片段 1 (载体骨架)** 将被视为组装的基石，平台会自动为其设计线性化扩增引物。")
+        st.info("💡 **片段 1 (载体骨架)**")
         v_col1, v_col2 = st.columns([1, 3])
         with v_col1: 
             v_name = st.text_input("载体命名", value=imported_seqs[0]["name"].replace("[完整] ", "").replace("[元件] ", "") if imported_seqs else "Vector")
