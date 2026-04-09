@@ -382,13 +382,26 @@ st.markdown("<br><hr><br>", unsafe_allow_html=True)
 st.markdown(f"### 🛒 引物批量暂存车 (当前共有 {len(st.session_state.primer_cart)} 条引物)")
 
 if st.session_state.primer_cart:
-    # 渲染纯净的购物车表格
-    cart_df = pd.DataFrame(st.session_state.primer_cart)
-    cart_df.index = range(1, len(cart_df) + 1)
-    st.dataframe(cart_df, use_container_width=True)
+    # 💡 新增：操作指南提示
+    st.info("💡 **高阶操作指南**：\n"
+            "1. **精准删除**：把鼠标移到表格最左侧的序号上，勾选对应行，点击右上角出现的『🗑️ 垃圾桶』即可删除个别引物。\n"
+            "2. **直接修改**：双击任意单元格，可以像在 Excel 里一样，直接修改引物名称或备注信息！")
     
-    # 构建兼容 SnapGene 的批量 txt 格式
-    txt_lines = [f"{row['引物名称']}\t{row['序列 (5\'->3\')']}\t{row['备注']}" for _, row in cart_df.iterrows()]
+    cart_df = pd.DataFrame(st.session_state.primer_cart)
+    
+    # ✅ 核心升级：将不可交互的 dataframe 替换为强大的 data_editor
+    edited_df = st.data_editor(
+        cart_df,
+        use_container_width=True,
+        num_rows="dynamic", # 开启魔法参数：允许动态增加和删除行
+        key="primer_editor"
+    )
+    
+    # 实时将表格里的删除和修改动作，同步覆盖回全局购物车
+    st.session_state.primer_cart = edited_df.to_dict('records')
+    
+    # 构建兼容 SnapGene 的批量 txt 格式 (使用编辑后的最新数据)
+    txt_lines = [f"{row['引物名称']}\t{row['序列 (5\'->3\')']}\t{row['备注']}" for _, row in edited_df.iterrows()]
     txt_content = "\n".join(txt_lines)
     
     col_dl, col_clear, _ = st.columns([2, 1, 3])
@@ -400,8 +413,7 @@ if st.session_state.primer_cart:
             mime="text/plain"
         )
     with col_clear:
-        # 清空购物车并刷新网页的按钮
-        if st.button("🗑️ 清空购物车"):
+        if st.button("🚨 一键清空购物车"):
             st.session_state.primer_cart = []
             st.rerun()
 else:
