@@ -1,11 +1,13 @@
 [theme]
+# 强制开启底层的暗黑模式
+base = "dark"
 # 严谨的学术字体
 font = "sans serif"
-# 科技感主色调 (对应 UI 里的荧光青)
-primaryColor = "#06B6D4"
-# 纯净白背景
-backgroundColor = "#FFFFFF"
-# 侧边栏/小卡片的浅灰色
-secondaryBackgroundColor = "#F8FAFC"
-# 深灰蓝字体，比纯黑更现代、不刺眼
-textColor = "#334155"
+# 赛博朋克主色调：霓虹青 (Neon Cyan)
+primaryColor = "#00E5FF"
+# 极致深邃的背景黑
+backgroundColor = "#0E1117"
+# 侧边栏及浮窗的深灰黑
+secondaryBackgroundColor = "#161B22"
+# 高级银灰字体，防眩光
+textColor = "#E2E8F0"
