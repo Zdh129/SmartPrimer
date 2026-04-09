@@ -7,32 +7,74 @@ from Bio import SeqIO
 # 0. 网页全局配置 (必须放在第一行)
 # ==========================================
 st.set_page_config(
-    page_title="引物设计平台 | SmartPrimer",
+    page_title="智能引物设计平台 | SmartPrimer",
     page_icon="🧬",
     layout="wide", 
     initial_sidebar_state="expanded"
 )
 
 # --- 自定义 CSS 样式注入 ---
+# --- 全新科技风 CSS 样式注入 ---
 st.markdown("""
 <style>
-    [data-testid="stSidebar"] { background-color: #f7f9fa; }
+    /* 1. 全局背景与字体颜色微调 (更纯净的白色背景) */
+    .stApp {
+        background-color: #FFFFFF;
+    }
+    
+    /* 2. 侧边栏美化: 极简浅灰蓝，增加视觉层次感 */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
+        border-right: 1px solid #E2E8F0;
+    }
+
+    /* 3. 主运行按钮：生信前沿渐变 (深海蓝 -> 荧光青) */
     .stButton>button {
-        width: 100%; border-radius: 8px; height: 50px;
-        font-size: 18px; font-weight: 600;
-        background: linear-gradient(135deg, #FF4B2B 0%, #FF416C 100%);
-        color: white; border: none;
-        box-shadow: 0 4px 15px 0 rgba(255, 65, 108, 0.35);
+        width: 100%;
+        border-radius: 6px;
+        height: 48px;
+        font-size: 16px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        background: linear-gradient(135deg, #1E3A8A 0%, #06B6D4 100%);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 14px 0 rgba(6, 182, 212, 0.30);
         transition: all 0.3s ease 0s;
     }
     .stButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 7px 20px 0 rgba(255, 65, 108, 0.5);
+        box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
+        background: linear-gradient(135deg, #1E3A8A 0%, #0891B2 100%);
     }
-    .stAlert { font-size: 15px; }
+
+    /* 4. 输入框/文本域/下拉菜单的交互优化 (呼吸灯效果) */
+    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {
+        border-radius: 6px;
+        border: 1px solid #CBD5E1;
+        background-color: #F8FAFC;
+        transition: all 0.2s ease-in-out;
+    }
+    .stTextInput>div>div>input:focus, .stSelectbox>div>div>div:focus, .stTextArea>div>div>textarea:focus {
+        border-color: #06B6D4;
+        background-color: #FFFFFF;
+        box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+    }
+
+    /* 5. 提示框 (Alerts/Info) 扁平化设计 */
+    .stAlert {
+        border-radius: 6px;
+        border: none;
+        border-left: 4px solid;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    /* 6. 隐藏 Streamlit 右上角默认菜单和底部水印 (打造独立 SaaS 质感) */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
-
 
 # ==========================================
 # 核心数据库：常用限制性内切酶
@@ -211,7 +253,7 @@ def design_qpcr_primers(target_seq, target_tm, min_amp, max_amp, gene_name, max_
 # --- 侧边栏 (Sidebar)：所有设置与控制 ---
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/000000/dna-helix.png", width=60)
-    st.markdown("## ⚙️ 控制面板")
+    st.markdown("## ⚙️ 核心控制面板")
     
     st.markdown("#### 1. 实验方案选择")
     method_choice = st.radio(
@@ -231,7 +273,7 @@ with st.sidebar:
     else: current_method = "qPCR"
 
     st.markdown("---")
-    st.markdown("#### 2. 参数配置")
+    st.markdown("#### 2. 热力学参数配置")
     
     if is_qpcr:
         target_tm = st.slider("🎯 目标 Tm (°C)", 55.0, 65.0, 60.0, 0.5)
@@ -241,11 +283,11 @@ with st.sidebar:
         elif is_gibson: fragment_count = st.selectbox("🧩 总组装片段数 (含载体):", list(range(2, 7)), index=1)
         else: fragment_count = st.selectbox("🧩 总拼接片段数:", list(range(2, 7)), index=0)
         
-        target_tm = st.slider("🎯 结合区目标 Tm (°C)", 50.0, 70.0, 65.0, 0.5)
+        target_tm = st.slider("🎯 结合区目标 Tm (°C)", 50.0, 70.0, 60.0, 0.5)
         homology_len = st.number_input("🔗 同源臂长度 (bp)", 15, 60, 25)
             
     st.markdown("---")
-    st.markdown("#### 3. 安全检查")
+    st.markdown("#### 3. 高级安全检查")
     do_enz_scan = st.checkbox("🧪 开启限制性内切酶扫描", value=True, help="扫描引物是否携带 EcoRI, BamHI 等 10 种常用酶切位点")
 
     st.markdown("<br><br><br>", unsafe_allow_html=True)
@@ -253,11 +295,11 @@ with st.sidebar:
 
 
 # --- 主屏幕 (Main Content)：序列输入与结果展示 ---
-st.title("🧬 引物设计平台")
+st.title("🧬 智能核酸引物设计平台")
 st.markdown(f"**当前执行模式:** `< {method_choice} >`")
 st.markdown("---")
 
-st.markdown("### 📥 序列输入")
+st.markdown("### 📥 序列输入舱")
 uploaded_file = st.file_uploader("📂 支持拖拽 SnapGene .dna, .fasta 或 .txt，实现自动填表与元件提取", type=["fasta", "fas", "txt", "seq", "dna"])
 
 imported_seqs = []
@@ -275,7 +317,7 @@ else:
     if needs_vector:
         plasmid_name = st.text_input(f"🏆 最终构建的质粒名称 (用于订单命名):", value="pNew_Plasmid")
         
-        st.info("💡 **片段 1 (载体骨架)** 平台会自动为其设计线性化扩增引物。")
+        st.info("💡 **片段 1 (载体骨架)** 将被视为组装的基石，平台会自动为其设计线性化扩增引物。")
         v_col1, v_col2 = st.columns([1, 3])
         with v_col1: 
             v_name = st.text_input("载体命名", value=imported_seqs[0]["name"].replace("[完整] ", "").replace("[元件] ", "") if imported_seqs else "Vector")
@@ -318,7 +360,7 @@ else:
 
 # --- 4. 执行计算 ---
 st.markdown("<br>", unsafe_allow_html=True)
-if st.button("🚀 开始生成"):
+if st.button("🚀 启动 AI 引擎进行设计"):
     st.markdown("### 📊 引擎设计结果")
     if is_qpcr:
         if not gene_seq.strip(): st.error("⚠️ 请输入靶基因序列！")
