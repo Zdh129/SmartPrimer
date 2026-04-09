@@ -1,6 +1,7 @@
 import streamlit as st
 import primer3
 import pandas as pd
+from Bio import SeqIO  # 用于解析 SnapGene 的 .dna 格式
 
 # ==========================================
 # 0. 网页全局配置 (必须放在第一行)
@@ -8,27 +9,19 @@ import pandas as pd
 st.set_page_config(
     page_title="智能引物设计平台 | SmartPrimer",
     page_icon="🧬",
-    layout="wide", # 开启宽屏模式
+    layout="wide", 
     initial_sidebar_state="expanded"
 )
 
 # --- 自定义 CSS 样式注入 ---
 st.markdown("""
 <style>
-    /* 美化侧边栏底色 */
-    [data-testid="stSidebar"] {
-        background-color: #f7f9fa;
-    }
-    /* 美化主运行按钮 */
+    [data-testid="stSidebar"] { background-color: #f7f9fa; }
     .stButton>button {
-        width: 100%;
-        border-radius: 8px;
-        height: 50px;
-        font-size: 18px;
-        font-weight: 600;
+        width: 100%; border-radius: 8px; height: 50px;
+        font-size: 18px; font-weight: 600;
         background: linear-gradient(135deg, #FF4B2B 0%, #FF416C 100%);
-        color: white;
-        border: none;
+        color: white; border: none;
         box-shadow: 0 4px 15px 0 rgba(255, 65, 108, 0.35);
         transition: all 0.3s ease 0s;
     }
@@ -36,10 +29,7 @@ st.markdown("""
         transform: translateY(-2px);
         box-shadow: 0 7px 20px 0 rgba(255, 65, 108, 0.5);
     }
-    /* 优化提示框的字体大小 */
-    .stAlert {
-        font-size: 15px;
-    }
+    .stAlert { font-size: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -54,28 +44,55 @@ COMMON_ENZYMES = {
 }
 
 # ==========================================
-# 核心算法区域 (保持不变)
+# 核心算法一：文件解析引擎 (支持 SnapGene .dna)
 # ==========================================
-def parse_sequence_file(file_content):
+def parse_sequence_file(uploaded_file):
     sequences = []
-    lines = file_content.splitlines()
-    if not lines: return sequences
-    if lines[0].strip().startswith(">"):
-        curr_name, curr_seq = "", []
-        for line in lines:
-            line = line.strip()
-            if not line: continue
-            if line.startswith(">"):
-                if curr_name: sequences.append({"name": curr_name, "seq": "".join(curr_seq)})
-                curr_name, curr_seq = line[1:].strip(), []
-            else:
-                curr_seq.append(line)
-        if curr_name: sequences.append({"name": curr_name, "seq": "".join(curr_seq)})
+    filename = uploaded_file.name.lower()
+    
+    # 1. SnapGene 格式 (.dna) 处理
+    if filename.endswith(".dna"):
+        try:
+            uploaded_file.seek(0)
+            record = SeqIO.read(uploaded_file, "snapgene")
+            seq_name = record.name if record.name and record.name != "<unknown name>" else filename.split('.')[0]
+            sequences.append({"name": f"[完整] {seq_name}", "seq": str(record.seq).upper()})
+            
+            for feature in record.features:
+                if feature.type in ["CDS", "promoter", "terminator", "misc_feature", "gene"]:
+                    feature_name = feature.qualifiers.get('label', [feature.type])[0]
+                    feature_seq = str(feature.extract(record.seq)).upper()
+                    sequences.append({"name": f"[元件] {feature_name}", "seq": feature_seq})
+        except Exception:
+            pass 
+            
+    # 2. 传统文本格式 (FASTA/TXT) 处理
     else:
-        raw_seq = "".join([line.strip() for line in lines])
-        if raw_seq: sequences.append({"name": "Imported_Target", "seq": raw_seq})
+        uploaded_file.seek(0)
+        file_content = uploaded_file.getvalue().decode("utf-8")
+        lines = file_content.splitlines()
+        
+        if not lines: return sequences
+        if lines[0].strip().startswith(">"):
+            curr_name, curr_seq = "", []
+            for line in lines:
+                line = line.strip()
+                if not line: continue
+                if line.startswith(">"):
+                    if curr_name: sequences.append({"name": curr_name, "seq": "".join(curr_seq).upper()})
+                    curr_name, curr_seq = line[1:].strip(), []
+                else:
+                    curr_seq.append(line)
+            if curr_name: sequences.append({"name": curr_name, "seq": "".join(curr_seq).upper()})
+        else:
+            raw_seq = "".join([line.strip() for line in lines]).upper()
+            if raw_seq: sequences.append({"name": filename.split('.')[0], "seq": raw_seq})
+            
     return sequences
 
+# ==========================================
+# 核心算法二：引物设计辅助引擎
+# ==========================================
 def get_reverse_complement(seq):
     complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
     return "".join(complement.get(base, base) for base in reversed(seq))
@@ -124,7 +141,7 @@ def design_assembly_primers(method, all_fragments, target_tm, homology_len, plas
                 note_fwd = f"连 [{all_fragments[i-1]['name']}] 3'端"
             
         fwd_data = {
-            "序号": len(primers_list) + 1, "引物名称": fwd_primer_name, "序列 (5'->3')": primer_fwd, 
+            "引物名称": fwd_primer_name, "序列 (5'->3')": primer_fwd, 
             "长度": len(primer_fwd), "Tm": round(tm_fwd, 2), "备注": note_fwd
         }
         if do_enz_scan: fwd_data["酶切警告"] = check_restriction_sites(primer_fwd)
@@ -146,7 +163,7 @@ def design_assembly_primers(method, all_fragments, target_tm, homology_len, plas
                 note_rev = f"连 [{all_fragments[i+1]['name']}] 5'端"
             
         rev_data = {
-            "序号": len(primers_list) + 1, "引物名称": rev_primer_name, "序列 (5'->3')": primer_rev, 
+            "引物名称": rev_primer_name, "序列 (5'->3')": primer_rev, 
             "长度": len(primer_rev), "Tm": round(tm_rev, 2), "备注": note_rev
         }
         if do_enz_scan: rev_data["酶切警告"] = check_restriction_sites(primer_rev)
@@ -174,7 +191,7 @@ def design_qpcr_primers(target_seq, target_tm, min_amp, max_amp, gene_name, max_
                     
                     pair_idx = len(results) + 1
                     pair_data = {
-                        "序号": pair_idx, "方案": f"Pair {pair_idx}", 
+                        "方案": f"Pair {pair_idx}", 
                         "正向引物": f"{gene_name}-{pair_idx}-F", "Fwd (5'->3')": f_seq, "Fwd Tm": round(f_tm, 2),
                         "反向引物": f"{gene_name}-{pair_idx}-R", "Rev (5'->3')": r_seq, "Rev Tm": round(r_tm, 2), 
                         "产物长": amp_len, "Tm 差": round(abs(f_tm - r_tm), 2)
@@ -193,7 +210,7 @@ def design_qpcr_primers(target_seq, target_tm, min_amp, max_amp, gene_name, max_
 
 # --- 侧边栏 (Sidebar)：所有设置与控制 ---
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/000000/dna-helix.png", width=60) # 添加一个小 Logo
+    st.image("https://img.icons8.com/color/96/000000/dna-helix.png", width=60)
     st.markdown("## ⚙️ 核心控制面板")
     
     st.markdown("#### 1. 实验方案选择")
@@ -236,23 +253,22 @@ with st.sidebar:
 
 
 # --- 主屏幕 (Main Content)：序列输入与结果展示 ---
-
 st.title("🧬 智能核酸引物设计平台")
 st.markdown(f"**当前执行模式:** `< {method_choice} >`")
 st.markdown("---")
 
 st.markdown("### 📥 序列输入舱")
-uploaded_file = st.file_uploader("📂 支持拖拽上传 .fasta 或 .txt 格式序列文件，实现自动填表", type=["fasta", "fas", "txt", "seq"])
+uploaded_file = st.file_uploader("📂 支持拖拽 SnapGene .dna, .fasta 或 .txt，实现自动填表与元件提取", type=["fasta", "fas", "txt", "seq", "dna"])
 
 imported_seqs = []
 if uploaded_file is not None:
-    imported_seqs = parse_sequence_file(uploaded_file.getvalue().decode("utf-8"))
+    imported_seqs = parse_sequence_file(uploaded_file)
     if imported_seqs: st.toast(f"✅ 成功提取 {len(imported_seqs)} 条序列！")
 
 plasmid_name, gene_name, all_fragments = "", "", []
 
 if is_qpcr:
-    gene_name = st.text_input("🏷️ 靶基因名称", value=imported_seqs[0]["name"] if imported_seqs else "Target_Gene")
+    gene_name = st.text_input("🏷️ 靶基因名称", value=imported_seqs[0]["name"].replace("[完整] ", "").replace("[元件] ", "") if imported_seqs else "Target_Gene")
     gene_seq = st.text_area("🧬 靶基因完整序列 (5' -> 3')", value=imported_seqs[0]["seq"] if imported_seqs else "", height=200)
 
 else:
@@ -261,13 +277,13 @@ else:
         
         st.info("💡 **片段 1 (载体骨架)** 将被视为组装的基石，平台会自动为其设计线性化扩增引物。")
         v_col1, v_col2 = st.columns([1, 3])
-        with v_col1: v_name = st.text_input("载体命名", value=imported_seqs[0]["name"] if imported_seqs else "Vector")
+        with v_col1: v_name = st.text_input("载体命名", value=imported_seqs[0]["name"].replace("[完整] ", "").replace("[元件] ", "") if imported_seqs else "Vector")
         with v_col2: v_seq = st.text_area("载体序列 (5' -> 3')", value=imported_seqs[0]["seq"] if imported_seqs else "", height=80)
         all_fragments.append({"name": v_name.strip(), "seq": v_seq.replace(" ", "").replace("\n", "").upper()})
 
         st.markdown("#### 🧩 插入片段序列")
         for i in range(1, fragment_count):
-            d_name = imported_seqs[i]["name"] if i < len(imported_seqs) else f"Insert_{i}"
+            d_name = imported_seqs[i]["name"].replace("[完整] ", "").replace("[元件] ", "") if i < len(imported_seqs) else f"Insert_{i}"
             d_seq = imported_seqs[i]["seq"] if i < len(imported_seqs) else ""
             f_col1, f_col2 = st.columns([1, 3])
             with f_col1: f_name = st.text_input(f"片段 {i+1} 命名", value=d_name, key=f"fn_{i}")
@@ -276,7 +292,7 @@ else:
     else:
         st.markdown("#### 🧩 线性拼接片段序列")
         for i in range(fragment_count):
-            d_name = imported_seqs[i]["name"] if i < len(imported_seqs) else f"Fragment_{i+1}"
+            d_name = imported_seqs[i]["name"].replace("[完整] ", "").replace("[元件] ", "") if i < len(imported_seqs) else f"Fragment_{i+1}"
             d_seq = imported_seqs[i]["seq"] if i < len(imported_seqs) else ""
             f_col1, f_col2 = st.columns([1, 3])
             with f_col1: f_name = st.text_input(f"片段 {i+1} 命名", value=d_name, key=f"fn_{i}")
@@ -284,7 +300,7 @@ else:
             all_fragments.append({"name": f_name.strip(), "seq": f_seq.replace(" ", "").replace("\n", "").upper()})
 
 
-# --- 运行计算与结果展示 ---
+# --- 4. 执行计算 ---
 st.markdown("<br>", unsafe_allow_html=True)
 if st.button("🚀 启动 AI 引擎进行设计"):
     st.markdown("### 📊 引擎设计结果")
@@ -296,23 +312,20 @@ if st.button("🚀 启动 AI 引擎进行设计"):
                 if results:
                     st.success("🎉 设计完成！已为您筛选出表现最优的候选引物对。")
                     
-                    # 1. 网页端展示完整数据表
                     df = pd.DataFrame(results)
-                    st.dataframe(df, use_container_width=True, hide_index=True)
+                    # 设定行索引从 1 开始，方便在网页端查看
+                    df.index = range(1, len(df) + 1)
+                    st.dataframe(df, use_container_width=True)
                     
-                    # 2. 构建极简的 TXT 导出内容 (展平 qPCR 的正反引物)
-                    txt_lines = ["序号\t引物名称\t引物序列(5'->3')"]
-                    idx = 1
+                    # 导出为 SnapGene 格式 (名称 \t 序列 \t 备注)
+                    txt_lines = []
                     for r in results:
-                        txt_lines.append(f"{idx}\t{r['正向引物']}\t{r['Fwd (5\'->3\')']}")
-                        idx += 1
-                        txt_lines.append(f"{idx}\t{r['反向引物']}\t{r['Rev (5\'->3\')']}")
-                        idx += 1
+                        txt_lines.append(f"{r['正向引物']}\t{r['Fwd (5\'->3\')']}\tqPCR产物:{r['产物长']}bp")
+                        txt_lines.append(f"{r['反向引物']}\t{r['Rev (5\'->3\')']}\tqPCR产物:{r['产物长']}bp")
                     txt_content = "\n".join(txt_lines)
                     
-                    # 3. 提供 TXT 下载
                     st.download_button(
-                        label="📥 下载引物序列订购单 (.txt)", 
+                        label="📥 下载 SnapGene 引物导入文件 (.txt)", 
                         data=txt_content.encode('utf-8'), 
                         file_name=f"{gene_name}_qPCR_Primers.txt", 
                         mime="text/plain"
@@ -324,26 +337,24 @@ if st.button("🚀 启动 AI 引擎进行设计"):
             with st.spinner(f'🔧 正在根据热力学规则规划 {current_method} 引物...'):
                 results = design_assembly_primers(current_method, all_fragments, target_tm, homology_len, plasmid_name, do_enz_scan)
                 df = pd.DataFrame(results)
+                # 设定行索引从 1 开始，方便在网页端查看
+                df.index = range(1, len(df) + 1)
                 
                 st.success("🎉 所有引物设计完成！请检查下方的酶切位点警告状态。")
-                
-                # 1. 网页端展示带高亮的完整数据表
                 def highlight(val): return 'color: #ff4b4b; font-weight: bold;' if isinstance(val, str) and '⚠️' in val else ''
-                display_df = df.style.map(highlight, subset=['酶切警告']) if do_enz_scan else df
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
-                # 2. 构建极简的 TXT 导出内容
-                txt_lines = ["序号\t引物名称\t引物序列(5'->3')"]
-                idx = 1
+                display_df = df.style.map(highlight, subset=['酶切警告']) if do_enz_scan else df
+                st.dataframe(display_df, use_container_width=True)
+                
+                # 导出为 SnapGene 格式 (名称 \t 序列 \t 备注)
+                txt_lines = []
                 for r in results:
-                    txt_lines.append(f"{idx}\t{r['引物名称']}\t{r['序列 (5\'->3\')']}")
-                    idx += 1
+                    txt_lines.append(f"{r['引物名称']}\t{r['序列 (5\'->3\')']}\t{r['备注']}")
                 txt_content = "\n".join(txt_lines)
                 
-                # 3. 提供 TXT 下载
                 fname = f"{plasmid_name}_{current_method.replace(' ', '')}.txt" if needs_vector else f"Overlap_{fragment_count}Frags.txt"
                 st.download_button(
-                    label="📥 下载引物序列订购单 (.txt)", 
+                    label="📥 下载 SnapGene 引物导入文件 (.txt)", 
                     data=txt_content.encode('utf-8'), 
                     file_name=fname, 
                     mime="text/plain"
