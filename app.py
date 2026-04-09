@@ -13,68 +13,70 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 自定义 CSS 样式注入 ---
-# --- 全新科技风 CSS 样式注入 ---
+# --- 全新暗黑科技风 (Cyber-Genetics) CSS 注入 ---
 st.markdown("""
 <style>
-    /* 1. 全局背景与字体颜色微调 (更纯净的白色背景) */
+    /* 1. 全局背景优化 (深邃黑) */
     .stApp {
-        background-color: #FFFFFF;
+        background-color: #0E1117;
     }
     
-    /* 2. 侧边栏美化: 极简浅灰蓝，增加视觉层次感 */
+    /* 2. 侧边栏美化: 极简深灰黑，增强层级感 */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 100%);
-        border-right: 1px solid #E2E8F0;
+        background: linear-gradient(180deg, #161B22 0%, #0D1117 100%);
+        border-right: 1px solid #30363D;
     }
 
-    /* 3. 主运行按钮：生信前沿渐变 (深海蓝 -> 荧光青) */
+    /* 3. 主运行按钮：赛博朋克流动渐变 (深紫 -> 霓虹青) */
     .stButton>button {
         width: 100%;
-        border-radius: 6px;
-        height: 48px;
-        font-size: 16px;
+        border-radius: 8px;
+        height: 50px;
+        font-size: 18px;
         font-weight: 600;
         letter-spacing: 0.5px;
-        background: linear-gradient(135deg, #1E3A8A 0%, #06B6D4 100%);
-        color: white;
+        background: linear-gradient(135deg, #6B21A8 0%, #00E5FF 100%);
+        color: #FFFFFF;
         border: none;
-        box-shadow: 0 4px 14px 0 rgba(6, 182, 212, 0.30);
+        box-shadow: 0 4px 15px 0 rgba(0, 229, 255, 0.2);
         transition: all 0.3s ease 0s;
     }
     .stButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
-        background: linear-gradient(135deg, #1E3A8A 0%, #0891B2 100%);
+        box-shadow: 0 6px 20px rgba(0, 229, 255, 0.4);
+        background: linear-gradient(135deg, #581C87 0%, #00B8D4 100%);
     }
 
-    /* 4. 输入框/文本域/下拉菜单的交互优化 (呼吸灯效果) */
+    /* 4. 输入框/文本域/下拉菜单的暗黑交互优化 (霓虹呼吸灯) */
     .stTextInput>div>div>input, .stSelectbox>div>div>div, .stTextArea>div>div>textarea {
         border-radius: 6px;
-        border: 1px solid #CBD5E1;
-        background-color: #F8FAFC;
+        border: 1px solid #30363D;
+        background-color: #0D1117;
+        color: #E2E8F0;
         transition: all 0.2s ease-in-out;
     }
     .stTextInput>div>div>input:focus, .stSelectbox>div>div>div:focus, .stTextArea>div>div>textarea:focus {
-        border-color: #06B6D4;
-        background-color: #FFFFFF;
-        box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+        border-color: #00E5FF;
+        background-color: #161B22;
+        box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.25);
     }
 
-    /* 5. 提示框 (Alerts/Info) 扁平化设计 */
+    /* 5. 提示框扁平化暗黑处理 */
     .stAlert {
         border-radius: 6px;
         border: none;
         border-left: 4px solid;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        background-color: #161B22;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.5);
     }
 
-    /* 6. 隐藏 Streamlit 右上角默认菜单和底部水印 (打造独立 SaaS 质感) */
+    /* 6. 隐藏 Streamlit 默认菜单，打造独立沉浸感 */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
+
 
 # ==========================================
 # 核心数据库：常用限制性内切酶
@@ -155,11 +157,9 @@ def design_assembly_primers(method, all_fragments, target_tm, homology_len, plas
     for i in range(N):
         curr_name = all_fragments[i]['name']
         curr_seq = all_fragments[i]['seq']
-        # 提取 PCR 模板名称
         curr_template = all_fragments[i].get('template', curr_name)
         kb_len = f"{len(curr_seq)/1000:.1f}k"
         
-        # ✅ 新的标准化命名规则：质粒名-片段总数-序号-长度k-模板名-方向
         if is_circular:
             fwd_primer_name = f"{plasmid_name}-{N}-{i+1}-{kb_len}-{curr_template}-F"
             rev_primer_name = f"{plasmid_name}-{N}-{i+1}-{kb_len}-{curr_template}-R"
@@ -321,10 +321,8 @@ else:
         v_col1, v_col2 = st.columns([1, 3])
         with v_col1: 
             v_name = st.text_input("载体命名", value=imported_seqs[0]["name"].replace("[完整] ", "").replace("[元件] ", "") if imported_seqs else "Vector")
-            # ✅ 新增：PCR 模板框，默认值为填入的名字，方便不修改直接用
             v_temp = st.text_input("🧪 扩增用 PCR 模板", value=v_name, key="v_temp")
         with v_col2: 
-            # 将高度调整到 130，完美匹配左侧两个输入框的总高度
             v_seq = st.text_area("载体序列 (5' -> 3')", value=imported_seqs[0]["seq"] if imported_seqs else "", height=130)
         
         all_fragments.append({"name": v_name.strip(), "seq": v_seq.replace(" ", "").replace("\n", "").upper(), "template": v_temp.strip()})
@@ -336,7 +334,6 @@ else:
             f_col1, f_col2 = st.columns([1, 3])
             with f_col1: 
                 f_name = st.text_input(f"片段 {i+1} 命名", value=d_name, key=f"fn_{i}")
-                # ✅ 新增：片段的 PCR 模板框
                 f_temp = st.text_input("🧪 扩增用 PCR 模板", value=d_name, key=f"ft_{i}")
             with f_col2: 
                 f_seq = st.text_area(f"片段 {i+1} 序列 (5' -> 3')", value=d_seq, height=130, key=f"fs_{i}")
@@ -350,7 +347,6 @@ else:
             f_col1, f_col2 = st.columns([1, 3])
             with f_col1: 
                 f_name = st.text_input(f"片段 {i+1} 命名", value=d_name, key=f"fn_{i}")
-                # ✅ 新增：线性拼接的模板框
                 f_temp = st.text_input("🧪 扩增用 PCR 模板", value=d_name, key=f"ft_{i}")
             with f_col2: 
                 f_seq = st.text_area(f"片段 {i+1} 序列 (5' -> 3')", value=d_seq, height=130, key=f"fs_{i}")
@@ -372,7 +368,7 @@ if st.button("🚀 启动 AI 引擎进行设计"):
                     
                     df = pd.DataFrame(results)
                     df.index = range(1, len(df) + 1)
-                    st.dataframe(df, use_container_width=True)
+                    st.dataframe(df, use_container_width=True, hide_index=True)
                     
                     # 导出为 SnapGene 格式 (名称 \t 序列 \t 备注)
                     txt_lines = []
@@ -397,10 +393,10 @@ if st.button("🚀 启动 AI 引擎进行设计"):
                 df.index = range(1, len(df) + 1)
                 
                 st.success("🎉 所有引物设计完成！请检查下方的酶切位点警告状态。")
-                def highlight(val): return 'color: #ff4b4b; font-weight: bold;' if isinstance(val, str) and '⚠️' in val else ''
+                def highlight(val): return 'color: #00E5FF; font-weight: bold;' if isinstance(val, str) and '⚠️' in val else ''
                 
                 display_df = df.style.map(highlight, subset=['酶切警告']) if do_enz_scan else df
-                st.dataframe(display_df, use_container_width=True)
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
                 
                 # 导出为 SnapGene 格式 (名称 \t 序列 \t 备注)
                 txt_lines = []
