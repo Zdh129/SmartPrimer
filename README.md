@@ -48,3 +48,13 @@ pip install streamlit primer3-py pandas biopython
 
 # 3. 启动应用引擎
 streamlit run app.py
+
+---
+
+## ⚖️ 声明与致谢 (Acknowledgments & Disclaimer)
+
+> **®️ 商标声明 (Trademark Notice):** > **SnapGene®** 是 Dotmatics 公司的注册商标。本平台 (SmartPrimer) 是一个独立开发的开源辅助工具，与 SnapGene 官方没有任何附属、赞助或合作关系。对 `.dna` 格式的解析支持仅用于科研数据的互操作性 (Interoperability)。
+> 
+> **⚙️ 引擎致谢 (Engine Acknowledgments):** > 本平台的引物热力学计算核心由权威开源项目 **[Primer3](https://primer3.ut.ee/)** 驱动；底层序列与格式解析引擎由 **[Biopython](https://biopython.org/)** 驱动。在此向伟大的生物信息学开源社区致敬。
+> 
+> **⚠️ 免责条款 (Disclaimer):** > 本平台完全免费且开源，旨在辅助生命科学研究并提升工作效率。引物设计结果基于热力学理论模型预测，开发者不对下游生物学实验的最终成败承担任何法律或经济责任。建议在实际提交合成订单前，结合具体的实验场景（如高 GC 区域、特殊聚合酶特性等）进行人工复核。
