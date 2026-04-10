@@ -7,7 +7,7 @@ from Bio import SeqIO
 # 0. 网页全局配置 & 会话状态初始化
 # ==========================================
 st.set_page_config(
-    page_title="智能引物设计平台 | SmartPrimer",
+    page_title="引物自动设计平台 | SmartPrimer",
     page_icon="🧬",
     layout="wide", 
     initial_sidebar_state="expanded"
@@ -237,7 +237,7 @@ def design_qpcr_primers(target_seq, target_tm, min_amp, max_amp, gene_name, max_
 # --- 侧边栏 (Sidebar)：所有设置与控制 ---
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/000000/dna-helix.png", width=60)
-    st.markdown("## ⚙️ 核心控制面板")
+    st.markdown("## ⚙️ 控制面板")
     
     st.markdown("#### 1. 实验方案选择")
     method_choice = st.radio(
@@ -257,7 +257,7 @@ with st.sidebar:
     else: current_method = "qPCR"
 
     st.markdown("---")
-    st.markdown("#### 2. 热力学参数配置")
+    st.markdown("#### 2. 参数配置")
     
     if is_qpcr:
         target_tm = st.slider("🎯 目标 Tm (°C)", 55.0, 65.0, 60.0, 0.5)
@@ -267,7 +267,7 @@ with st.sidebar:
         elif is_gibson: fragment_count = st.selectbox("🧩 总组装片段数 (含载体):", list(range(2, 7)), index=1)
         else: fragment_count = st.selectbox("🧩 总拼接片段数:", list(range(2, 7)), index=0)
         
-        target_tm = st.slider("🎯 结合区目标 Tm (°C)", 50.0, 70.0, 60.0, 0.5)
+        target_tm = st.slider("🎯 结合区目标 Tm (°C)", 50.0, 70.0, 65.0, 0.5)
         homology_len = st.number_input("🔗 同源臂长度 (bp)", 15, 60, 25)
             
     st.markdown("---")
@@ -279,11 +279,11 @@ with st.sidebar:
 
 
 # --- 主屏幕 (Main Content)：序列输入与结果展示 ---
-st.title("🧬 智能核酸引物设计平台")
+st.title("🧬 引物设计平台")
 st.markdown(f"**当前执行模式:** `< {method_choice} >`")
 st.markdown("---")
 
-st.markdown("### 📥 序列输入舱")
+st.markdown("### 📥 序列输入")
 uploaded_file = st.file_uploader("📂 支持拖拽 SnapGene .dna, .fasta 或 .txt，实现自动填表与元件提取", type=["fasta", "fas", "txt", "seq", "dna"])
 
 imported_seqs = []
@@ -352,7 +352,7 @@ else:
 
 # --- 4. 执行计算与加入购物车 ---
 st.markdown("<br>", unsafe_allow_html=True)
-if st.button("🚀 启动 AI 引擎进行设计 (并加入购物车)"):
+if st.button("🚀 开始设计 (并加入购物车)"):
     st.markdown("### 📊 本次引擎设计结果")
     if is_qpcr:
         if not gene_seq.strip(): st.error("⚠️ 请输入靶基因序列！")
@@ -392,7 +392,7 @@ st.markdown("<br><hr><br>", unsafe_allow_html=True)
 st.markdown(f"### 🛒 引物批量暂存车 (当前共有 {len(st.session_state.primer_cart)} 条引物)")
 
 if st.session_state.primer_cart:
-    st.info("💡 **高阶操作指南**：\n"
+    st.info("💡 **操作指南**：\n"
             "1. **精准删除**：把鼠标移到表格最左侧的序号上，勾选对应行，点击右上角出现的『🗑️ 垃圾桶』即可删除个别引物。\n"
             "2. **直接修改**：双击任意单元格，可以像在 Excel 里一样，直接修改引物名称或备注信息！")
     
