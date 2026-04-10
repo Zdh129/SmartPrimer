@@ -7,7 +7,7 @@
 
 **SmartPrimer** 是一款专为现代分子生物学和合成生物学打造的高自动化引物设计 Web 工具。抛弃繁琐的手动设计与格式转换，本平台为您提供从序列读取到批量订购的无缝体验。
 
-🌐 **[在线体验 SmartPrimer]** *(请在此替换为你的专属链接, 如: https://smartprimer-zdh.streamlit.app/)*
+🌐 **[在线体验 SmartPrimer]** *https://smartprimer-zdh.streamlit.app/*
 
 ---
 
